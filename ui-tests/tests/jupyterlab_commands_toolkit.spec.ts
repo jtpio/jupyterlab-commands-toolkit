@@ -83,3 +83,37 @@ test.describe('web client routing', () => {
     expect(await page.sidebar.isOpen('left')).toBe(true);
   });
 });
+
+test.describe('command patterns', () => {
+  test.use({
+    mockSettings: {
+      ...galata.DEFAULT_SETTINGS,
+      'jupyterlab-commands-toolkit:plugin': {
+        allowedPatterns: ['application:*'],
+        deniedPatterns: ['application:toggle-left-area']
+      }
+    }
+  });
+
+  test('should only list the allowed commands', async ({ page }) => {
+    const ids = await page.evaluate(async () => {
+      const result: any = await window.jupyterapp.commands.execute(
+        'jupyterlab-commands-toolkit:list-all-commands'
+      );
+      return result.commands.map((command: any) => command.id as string);
+    });
+
+    expect(ids).toContain('application:toggle-right-area');
+    expect(ids).not.toContain('application:toggle-left-area');
+    expect(ids.every(id => id.startsWith('application:'))).toBe(true);
+  });
+
+  test('should not execute the denied commands', async ({ page }) => {
+    await emitCommand(page, { name: 'application:toggle-left-area' });
+    // An allowed command, to make sure the events were processed
+    await emitCommand(page, { name: 'application:toggle-right-area' });
+    await expect.poll(() => page.sidebar.isOpen('right')).toBe(true);
+
+    expect(await page.sidebar.isOpen('left')).toBe(true);
+  });
+});

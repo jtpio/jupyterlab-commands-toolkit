@@ -1,12 +1,12 @@
 {
   "title": "JupyterLab Commands Toolkit",
-  "description": "Settings for the jupyterlab-commands-toolkit extension.",
+  "description": "Settings for the jupyterlab-commands-toolkit extension. The command patterns apply to the commands listed and executed through the toolkit, for example by an AI agent, not to the commands run from the JupyterLab user interface.",
   "type": "object",
   "properties": {
     "allowedPatterns": {
       "type": "array",
       "title": "Allowed command patterns",
-      "description": "Glob patterns matched against JupyterLab command IDs. Only commands whose ID matches at least one pattern are returned by list_all_commands. If the list is empty, all commands are returned. Supports `*` (any sequence) and `?` (single character) wildcards. Example: [\"notebook:*\", \"docmanager:open*\"].",
+      "description": "Glob patterns matched against JupyterLab command IDs. Only the commands whose ID matches at least one pattern can be listed and executed through the toolkit. If the list is empty, all commands are allowed. Supports `*` (any sequence) and `?` (single character) wildcards. Example: [\"notebook:*\", \"docmanager:open*\"].",
       "items": {
         "type": "string",
         "minLength": 1
@@ -16,7 +16,7 @@
     "deniedPatterns": {
       "type": "array",
       "title": "Denied command patterns",
-      "description": "Glob patterns matched against JupyterLab command IDs. Commands whose ID matches any of these patterns are excluded from list_all_commands, applied after `allowedPatterns`. Supports `*` and `?` wildcards.",
+      "description": "Glob patterns matched against JupyterLab command IDs. The commands whose ID matches any of these patterns cannot be listed or executed through the toolkit, even if they match `allowedPatterns`. Supports `*` and `?` wildcards.",
       "items": {
         "type": "string",
         "minLength": 1

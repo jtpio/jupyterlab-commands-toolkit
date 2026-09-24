@@ -24,6 +24,11 @@ namespace CommandIDs {
   export const getWebClientId = 'jupyterlab-commands-toolkit:get-web-client-id';
 }
 
+/**
+ * The prefix of the command IDs of the extension.
+ */
+const COMMAND_PREFIX = 'jupyterlab-commands-toolkit:';
+
 type JupyterLabCommand = {
   name: string;
   args: any;
@@ -96,8 +101,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     // The id of this web client (browser tab), new on each page load
     const clientId = UUID.uuid4();
 
-    // Empty until settings load resolves — fail-open so list_all_commands
-    // returns everything if it fires before the async load completes.
+    // The command patterns from the settings, empty until the settings are loaded
     let allowedRegexes: RegExp[] = [];
     let deniedRegexes: RegExp[] = [];
 
@@ -112,17 +116,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
       deniedRegexes = compilePatterns(denied ?? []);
     };
 
-    if (settingRegistry) {
-      settingRegistry
-        .load(PLUGIN_ID)
-        .then(settings => {
-          refreshFromSettings(settings);
-          settings.changed.connect(refreshFromSettings);
-        })
-        .catch(err => {
-          console.error(`[${PLUGIN_ID}] Failed to load settings:`, err);
-        });
-    }
+    // Commands are only handled once the settings are loaded, so the patterns
+    // apply to the very first command
+    const settingsLoaded = settingRegistry
+      ? settingRegistry
+          .load(PLUGIN_ID)
+          .then(settings => {
+            refreshFromSettings(settings);
+            settings.changed.connect(refreshFromSettings);
+          })
+          .catch(err => {
+            console.error(`[${PLUGIN_ID}] Failed to load settings:`, err);
+          })
+      : Promise.resolve();
 
     const handleCommand = async (event: Event.Emission): Promise<void> => {
       const data = event as any as JupyterLabCommand;
@@ -130,12 +136,26 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return;
       }
 
+      await settingsLoaded;
+
       const result: JupyterLabCommandResult = {
         requestId: data.requestId || '',
         success: false
       };
 
       try {
+        // The commands of this extension are always allowed, as the tools rely on them
+        if (
+          !data.name.startsWith(COMMAND_PREFIX) &&
+          !isAllowed(data.name, allowedRegexes, deniedRegexes)
+        ) {
+          throw new Error(
+            trans.__(
+              'Command "%1" is not allowed by the jupyterlab-commands-toolkit settings',
+              data.name
+            )
+          );
+        }
         const commandResult = await app.commands.execute(data.name, data.args);
         result.success = true;
 
@@ -212,6 +232,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         }
       },
       execute: async (args: any) => {
+        await settingsLoaded;
         const query = args['query'] as string | undefined;
 
         const commandList: Array<{

@@ -101,20 +101,22 @@ async def main():
 
 For a full list of available commands in JupyterLab, refer to the [JupyterLab Command Registry documentation](https://jupyterlab.readthedocs.io/en/latest/user/commands.html#commands-list).
 
-## Restricting which commands are listed
+## Restricting commands in the browser
 
-JupyterLab registers several hundred commands by default, which can be a lot of
-noise when an agent calls `list_all_commands`. To narrow the surface, the
-extension exposes two settings under the plugin id
-`jupyterlab-commands-toolkit:plugin`:
+JupyterLab registers several hundred commands, which can be a lot of noise and
+give an agent more power than needed. The frontend extension has two settings,
+under the plugin id `jupyterlab-commands-toolkit:plugin`, to restrict the
+commands that can be listed and executed through the toolkit in a JupyterLab
+instance, whatever the tool requesting them:
 
 - `allowedPatterns` — glob patterns matched against command IDs. If non-empty,
-  only commands whose ID matches at least one pattern are returned.
-- `deniedPatterns` — glob patterns excluded from the result, applied after
-  `allowedPatterns`.
+  only commands whose ID matches at least one pattern are allowed.
+- `deniedPatterns` — glob patterns of the commands that are not allowed, even if
+  they match `allowedPatterns`.
 
 Both support `*` (any sequence) and `?` (single character). Empty arrays mean
-"no restriction", which preserves the previous default behavior.
+"no restriction", which is the default. The commands run from the JupyterLab
+user interface are not restricted.
 
 The settings can be edited from the JupyterLab Settings Editor, or shipped as
 defaults via `etc/jupyter/labconfig/default_setting_overrides.d/<n>-jupyterlab-commands-toolkit.json`:
@@ -127,8 +129,8 @@ defaults via `etc/jupyter/labconfig/default_setting_overrides.d/<n>-jupyterlab-c
 }
 ```
 
-The filter is applied to `list_all_commands` only; `execute_command` still runs
-any command the JupyterLab application accepts.
+Changes to the settings apply to the open JupyterLab tabs when made from the
+Settings Editor, and to the other tabs after a reload.
 
 ## Uninstall
 
