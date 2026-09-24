@@ -16,6 +16,7 @@ for the frontend extension.
 - **Command Execution**: Execute any JupyterLab command programmatically from Python
 - **MCP Integration**: Automatically exposes tools to AI assistants via [jupyter-server-mcp](https://github.com/jupyter-ai-contrib/jupyter-server-mcp)
 - **Web Client Routing**: Execute a command on a specific browser tab only (see below)
+- **Command Namespaces**: Expose curated sets of commands as dedicated tools (see below)
 
 ## Web client routing
 
@@ -79,6 +80,8 @@ The following tools will be automatically available:
 - `list_all_commands` - List all available JupyterLab commands with their metadata
 - `execute_command` - Execute any JupyterLab command programmatically
 
+To only give access to a subset of the commands, see [Command namespaces](#command-namespaces).
+
 ### Server-Side Python Usage
 
 Use the toolkit directly from server-side Python to execute JupyterLab commands.
@@ -101,13 +104,85 @@ async def main():
 
 For a full list of available commands in JupyterLab, refer to the [JupyterLab Command Registry documentation](https://jupyterlab.readthedocs.io/en/latest/user/commands.html#commands-list).
 
+## Command namespaces
+
+JupyterLab registers several hundred commands, and `execute_command` gives an
+agent access to all of them. A namespace is a named set of commands, exposed
+with its own pair of tools:
+
+- `<name>_list_commands` - List the commands of the namespace
+- `<name>_execute_command` - Execute a command of the namespace. Other commands
+  are rejected by the server before reaching JupyterLab.
+
+Namespaces are defined in the Jupyter Server configuration, for example in
+`jupyter_server_config.py`:
+
+```python
+c.CommandsToolkit.namespaces = {
+    "notebook": {
+        "description": "Edit and run the cells of the active notebook.",
+        "commands": ["notebook:*", "docmanager:save"],
+        "exclude": ["notebook:export-to-format", "notebook:*kernel*"],
+    },
+    "layout": ["application:toggle-*", "application:reset-layout"],
+}
+
+# Only expose the tools of the namespaces, not list_all_commands and execute_command
+c.CommandsToolkit.expose_all_commands = False
+```
+
+Or in `jupyter_server_config.json`:
+
+```json
+{
+  "CommandsToolkit": {
+    "namespaces": {
+      "notebook": {
+        "description": "Edit and run the cells of the active notebook.",
+        "commands": ["notebook:*", "docmanager:save"],
+        "exclude": ["notebook:export-to-format", "notebook:*kernel*"]
+      },
+      "layout": ["application:toggle-*", "application:reset-layout"]
+    },
+    "expose_all_commands": false
+  }
+}
+```
+
+With this configuration, `jupyter-server-mcp` exposes the
+`notebook_list_commands`, `notebook_execute_command`, `layout_list_commands` and
+`layout_execute_command` tools.
+
+A namespace is either a list of command patterns, or an object with:
+
+- `commands` - The patterns of the commands of the namespace
+- `exclude` - Optional patterns of commands to leave out
+- `description` - An optional description, added to the descriptions of the
+  tools to tell the agent what the namespace is for
+
+The patterns are matched against the command IDs, and support `*` (any sequence
+of characters) and `?` (any single character). The name of a namespace prefixes
+the names of its tools: it must start with a letter and only contain letters,
+digits, `_` and `-`.
+
+Some tips to craft namespaces:
+
+- Call `list_all_commands` to find the IDs of the commands to include, or see
+  the [list of JupyterLab commands](https://jupyterlab.readthedocs.io/en/latest/user/commands.html#commands-list).
+- The namespaces are logged when the server starts, and an invalid
+  configuration is reported in the server logs.
+- To use different namespaces per project, pass a configuration file when
+  starting JupyterLab: `jupyter lab --config=path/to/jupyter_server_config.py`.
+- Namespaces are a guardrail, not a sandbox: some commands run other commands
+  passed as arguments, such as `apputils:run-first-enabled` and
+  `apputils:run-all-enabled`. Avoid broad patterns such as `apputils:*`.
+
 ## Restricting commands in the browser
 
-JupyterLab registers several hundred commands, which can be a lot of noise and
-give an agent more power than needed. The frontend extension has two settings,
-under the plugin id `jupyterlab-commands-toolkit:plugin`, to restrict the
-commands that can be listed and executed through the toolkit in a JupyterLab
-instance, whatever the tool requesting them:
+The frontend extension also has two settings, under the plugin id
+`jupyterlab-commands-toolkit:plugin`, to restrict the commands that can be
+listed and executed through the toolkit in a JupyterLab instance, whatever the
+tool requesting them:
 
 - `allowedPatterns` — glob patterns matched against command IDs. If non-empty,
   only commands whose ID matches at least one pattern are allowed.

@@ -1,6 +1,6 @@
 import asyncio
 
-from jupyterlab_commands_toolkit.tools import emit, target_client_id
+from jupyterlab_commands_toolkit.tools import TOOLS, emit, get_tools, target_client_id
 
 COMMAND_SCHEMA_ID = (
     "https://events.jupyter.org/jupyterlab_command_toolkit/lab_command/v1"
@@ -32,3 +32,7 @@ async def test_emit_to_target_client(jp_serverapp):
     finally:
         target_client_id.reset(token)
     assert event["client_id"] == "client-1"
+
+
+def test_default_tools(jp_serverapp):
+    assert get_tools() == TOOLS

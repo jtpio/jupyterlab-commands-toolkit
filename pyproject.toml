@@ -35,6 +35,7 @@ dev = [
 mcp = ["jupyter-server-mcp>=0.1.2"]
 test = [
     "coverage",
+    "jupyter-server-mcp>=0.1.2",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -42,7 +43,7 @@ test = [
 ]
 
 [project.entry-points."jupyter_server_mcp.tools"]
-jupyterlab_commands_toolkit = "jupyterlab_commands_toolkit.tools:TOOLS"
+jupyterlab_commands_toolkit = "jupyterlab_commands_toolkit.tools:get_tools"
 
 [tool.hatch.version]
 source = "nodejs"

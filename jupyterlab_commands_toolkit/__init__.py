@@ -14,6 +14,9 @@ except ImportError:
 import pathlib
 
 from jupyter_server.serverapp import ServerApp
+from traitlets import TraitError
+
+from .config import CommandsToolkit
 
 
 def _jupyter_labextension_paths():
@@ -71,6 +74,17 @@ def _load_jupyter_server_extension(serverapp: ServerApp):
     serverapp.event_logger.add_listener(
         schema_id=result_schema_id, listener=command_result_listener
     )
+
+    try:
+        toolkit = CommandsToolkit(parent=serverapp)
+    except TraitError as e:
+        serverapp.log.error(f"Invalid jupyterlab_commands_toolkit configuration: {e}")
+    else:
+        for namespace in toolkit.get_namespaces():
+            serverapp.log.info(
+                f"jupyterlab_commands_toolkit namespace '{namespace.name}': "
+                f"{', '.join(namespace.commands)}"
+            )
 
     serverapp.log.info(
         "jupyterlab_commands_toolkit extension loaded with bidirectional event communication."
